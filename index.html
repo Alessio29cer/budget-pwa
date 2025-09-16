@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Budgetplan</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#ffcc00">
+  <style>
+    body { font-family:"Segoe UI", Arial, sans-serif; background:#1e1e1e; color:#f5f5f5; margin:0; padding:20px; }
+    h1 { text-align:center; color:#fff; margin-bottom:20px; }
+    .container { max-width:700px; margin:auto; background:#2c2c2c; padding:25px 30px; border-radius:16px; box-shadow:0 6px 20px rgba(0,0,0,0.5); }
+    h2 { margin-top:20px; color:#ffcc00; border-bottom:2px solid #444; padding-bottom:5px; }
+    label { display:block; margin-top:10px; font-weight:bold; }
+    input[type=number] { width:100%; padding:8px; margin-top:5px; border-radius:8px; border:none; font-size:14px; box-sizing:border-box; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start; }
+    .full { grid-column:1/-1; }
+    button { margin-top:20px; width:100%; padding:12px; background:linear-gradient(90deg,#ff3c3c,#ffcc00); color:#1e1e1e; border:none; border-radius:8px; font-size:16px; font-weight:bold; cursor:pointer; box-shadow:0 4px 10px rgba(255,204,0,0.5); transition:0.3s; }
+    button:hover { transform:scale(1.03); }
+    #result { margin-top:20px; padding:20px; border-radius:12px; font-weight:bold; font-size:16px; line-height:1.5; background:rgba(44,44,44,0.85); color:#fff; text-align:center; }
+    canvas { margin-top:20px; width:100% !important; height:350px !important; }
+    .category-label { display:flex; align-items:center; gap:6px; }
+    .hint { font-size:13px; color:#bbb; margin-top:4px; }
+  </style>
+</head>
+<body>
+<h1>💰 Budgetplan</h1>
+<div class="container">
+<h2>Einnahmen</h2>
+<div class="full">
+<label for="income"><i class="fa-solid fa-money-bill-wave"></i> Monatliches Einkommen</label>
+<input type="number" id="income" placeholder="z. B. 5000">
+<div class="hint">Dein Nettoeinkommen in CHF</div>
+</div>
+<h2>Ausgaben</h2>
+<div class="grid">
+<div>
+<label class="category-label"><i class="fa-solid fa-house"></i> Miete</label>
+<input type="number" id="rent" placeholder="z. B. 1500">
+<label class="category-label"><i class="fa-solid fa-shield-halved"></i> Versicherungen</label>
+<input type="number" id="ins" placeholder="z. B. 100">
+<label class="category-label"><i class="fa-solid fa-credit-card"></i> Kredit / Raten</label>
+<input type="number" id="loans" placeholder="z. B. 300">
+</div>
+<div>
+<label class="category-label"><i class="fa-solid fa-basket-shopping"></i> Lebensmittel</label>
+<input type="number" id="food" placeholder="z. B. 500">
+<label class="category-label"><i class="fa-solid fa-car"></i> Transport</label>
+<input type="number" id="transport" placeholder="z. B. 200">
+<label class="category-label"><i class="fa-solid fa-face-grin-beam"></i> Freizeit / Shopping</label>
+<input type="number" id="fun" placeholder="z. B. 250">
+</div>
+<div class="full">
+<label class="category-label"><i class="fa-solid fa-ellipsis"></i> Sonstige Ausgaben</label>
+<input type="number" id="other" placeholder="z. B. 100">
+</div>
+</div>
+<button onclick="calculateBudget()">Budget berechnen</button>
+<div id="result" role="status" aria-live="polite"></div>
+<canvas id="expensesChart" aria-label="Ausgaben Tortendiagramm" role="img"></canvas>
+</div>
+<script>
+let chart;
+function calculateBudget(){
+let income=parseFloat(document.getElementById("income").value)||0;
+let rent=parseFloat(document.getElementById("rent").value)||0;
+let ins=parseFloat(document.getElementById("ins").value)||0;
+let loans=parseFloat(document.getElementById("loans").value)||0;
+let food=parseFloat(document.getElementById("food").value)||0;
+let transport=parseFloat(document.getElementById("transport").value)||0;
+let fun=parseFloat(document.getElementById("fun").value)||0;
+let other=parseFloat(document.getElementById("other").value)||0;
+let fixed=rent+ins+loans;
+let variable=food+transport+fun+other;
+let expenses=fixed+variable;
+let rest=income-expenses;
+let resultBox=document.getElementById("result");
+let tip=""; let tipColor="";
+if(rest<0){tip="💡 Du gibst mehr aus, als du einnimmst! Prüfe Freizeit, Shopping oder Sonstiges."; tipColor="#ff4c4c";}
+else if(rest<income*0.1){tip="💡 Dein Budget ist knapp, versuche 50–100 CHF zu sparen."; tipColor="#ffc107";}
+else{tip="✅ Alles super! Du hast genügend Spielraum zum Sparen."; tipColor="#28a745";}
+if(income<=0){resultBox.style.background="#ffc10733";resultBox.style.color="#fff";resultBox.innerHTML="Bitte trage zuerst dein Einkommen ein.";}
+else{resultBox.style.background="rgba(44,44,44,0.85)";resultBox.style.color="#fff";
+resultBox.innerHTML=`💵 Restbudget: <strong>${rest.toFixed(2)} CHF</strong><br>Gesamtausgaben: ${expenses.toFixed(2)} CHF (Fix: ${fixed.toFixed(2)} CHF, Variabel: ${variable.toFixed(2)} CHF)<br><span style="color:${tipColor}; font-weight:bold;">${tip}</span>`;}
+let labels=["Miete","Versicherungen","Kredit","Lebensmittel","Transport","Freizeit","Sonstiges"];
+let data=[rent,ins,loans,food,transport,fun,other];
+if(chart) chart.destroy();
+let ctx=document.getElementById("expensesChart").getContext("2d");
+chart=new Chart(ctx,{type:"pie",data:{labels:labels,datasets:[{data:data,backgroundColor:["#ff4c4c","#ff6f4c","#ff914c","#ffb14c","#ffd24c","#fff14c","#ffff4c"],borderColor:"#1e1e1e",borderWidth:2}]},
+options:{plugins:{legend:{position:"bottom",labels:{color:"#fff"}}}}});
+saveToLocal({income,rent,ins,loans,food,transport,fun,other});
+}
+function saveToLocal(obj){localStorage.setItem("budgetData",JSON.stringify(obj));}
+function loadFromLocal(){let raw=localStorage.getItem("budgetData");if(!raw)return;let obj=JSON.parse(raw);for(let key in obj){if(document.getElementById(key))document.getElementById(key).value=obj[key];}calculateBudget();}
+window.addEventListener("DOMContentLoaded",loadFromLocal);
+if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js");});}
+</script>
+</body></html>
